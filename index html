@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Logic Master - 10 Units</title>
+    <style>
+        :root {
+            --bg: #0b0e14; --text: #ffffff; --box: #1a1f26; --border: #2d343f;
+            --win: #00ff88; --loss: #ff4d4d; --p-color: #0066ff; --b-color: #ff0044;
+            --accent: #ffd700;
+        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; font-family: 'Inter', sans-serif; }
+        body { background: var(--bg); color: var(--text); margin: 0; padding: 0; overflow-x: hidden; }
+        
+        /* Header */
+        .global-header {
+            position: sticky; top: 0; z-index: 100;
+            background: rgba(11, 14, 20, 0.95); backdrop-filter: blur(15px);
+            padding: 10px; border-bottom: 2px solid var(--accent);
+            width: 100%; display: flex; flex-direction: column; align-items: center;
+        }
+        .main-plate { width: 100%; max-width: 420px; background: #000; border-radius: 8px; padding: 5px; border: 1px solid var(--border); margin-bottom: 10px; }
+        .grid { display: grid; grid-template-rows: repeat(6, 1fr); grid-template-columns: repeat(12, 1fr); grid-auto-flow: column; gap: 2px; }
+        .dot { width: 100%; aspect-ratio: 1; border-radius: 50%; background: #222; display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: bold; }
+        .dot.P { background: var(--p-color); } .dot.B { background: var(--b-color); } .dot.T { background: #27ae60; }
+
+        .main-btns { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; width: 100%; max-width: 420px; margin-bottom: 10px; }
+        .btn { padding: 15px 0; border: none; border-radius: 12px; font-size: 32px; font-weight: 900; color: #fff; cursor: pointer; transition: 0.1s; }
+        .btn-p { background: var(--p-color); box-shadow: 0 4px 0 #0044aa; }
+        .btn-t { background: #27ae60; box-shadow: 0 4px 0 #1e8449; }
+        .btn-b { background: var(--b-color); box-shadow: 0 4px 0 #aa0033; }
+        .btn:active { transform: translateY(3px); box-shadow: none; }
+        
+        .util-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; width: 100%; max-width: 420px; }
+        .btn-sub { padding: 8px 0; border: 1px solid var(--border); border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; background: var(--box); color: var(--text); }
+
+        /* Unit Layout */
+        .app-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; padding: 10px; }
+        .section { background: var(--box); border: 1px solid var(--border); border-radius: 12px; padding: 8px 5px; display: flex; flex-direction: column; align-items: center; }
+        
+        .u-header { width: 100%; display: flex; justify-content: space-between; padding: 0 5px; margin-bottom: 5px; }
+        .u-label { font-size: 10px; font-weight: 900; color: #555; }
+        .u-win-count { font-size: 10px; color: var(--win); font-weight: bold; }
+
+        .target-circle { 
+            width: 42px; height: 42px; border: 3px solid #000; border-radius: 50%; 
+            background: #000; display: flex; align-items: center; justify-content: center; margin-bottom: 4px;
+        }
+        .target-circle span { font-size: 16px; font-weight: 900; }
+        .dna-tag { font-size: 8px; color: var(--accent); margin-bottom: 6px; font-weight: bold; }
+
+        .hist-container {
+            width: 95%; background: rgba(0,0,0,0.4); border-radius: 6px; 
+            padding: 4px; overflow-x: auto; display: flex; flex-direction: column; flex-wrap: wrap; 
+            align-content: flex-start; gap: 2px; scrollbar-width: none;
+        }
+        .hist-container::-webkit-scrollbar { display: none; }
+        .h-icon { width: 14px; height: 14px; font-size: 9px; display: flex; align-items: center; justify-content: center; border-radius: 2px; }
+        .h-win { color: var(--win); background: rgba(0,255,136,0.1); }
+        .h-loss { color: var(--loss); background: rgba(255,77,77,0.1); }
+
+        .active-P { border-color: var(--p-color) !important; color: var(--p-color) !important; }
+        .active-B { border-color: var(--b-color) !important; color: var(--b-color) !important; }
+        .is-loss { border-color: var(--loss) !important; color: var(--loss) !important; }
+
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: none; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background: var(--box); width: 90%; max-width: 320px; border-radius: 15px; padding: 20px; border: 1px solid var(--border); text-align: center; }
+    </style>
+</head>
+<body>
+
+<div class="global-header">
+    <div class="main-plate"><div id="globalGrid" class="grid"></div></div>
+    <div class="main-btns">
+        <button class="btn btn-p" onclick="globalInput('P')">P</button>
+        <button class="btn btn-t" onclick="globalInput('T')">T</button>
+        <button class="btn btn-b" onclick="globalInput('B')">B</button>
+    </div>
+    <div class="util-grid">
+        <button class="btn-sub" onclick="globalUndo()">↩ ย้อนกลับ</button>
+        <button class="btn-sub" onclick="openGlobalSetting()">⚙️ ตั้งค่า</button>
+        <button class="btn-sub" style="color:var(--loss);" onclick="globalReset()">🗑 ล้างข้อมูล</button>
+    </div>
+</div>
+
+<div class="app-container" id="unitContainer"></div>
+
+<div id="mainSettingModal" class="modal" onclick="closeModals()">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <h3 style="margin:0 0 15px 0; color:var(--accent);">AUTO-RECALC SETTING</h3>
+        <div style="display:grid; gap:10px;">
+            <button class="btn-sub" onclick="openSubModal('woodModal')">ไม้ทบ: <span id="curWood">6</span></button>
+            <button class="btn-sub" onclick="openSubModal('lvModal')">ความแม่นยำ: LV <span id="curLv">1</span></button>
+            <button class="btn-sub" onclick="openSubModal('rowModal')">แถวประวัติ: <span id="curRows">2</span> แถว</button>
+        </div>
+        <button class="btn-sub" style="margin-top:20px; width:100%; background:var(--accent); color:#000; border:none; height:40px;" onclick="closeModals()">ตกลง</button>
+    </div>
+</div>
+
+<div id="lvModal" class="modal" onclick="closeModals()"><div class="modal-content"><h4>แม่นยำ</h4><div id="lvOptions" style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px;"></div></div></div>
+<div id="woodModal" class="modal" onclick="closeModals()"><div class="modal-content"><h4>ไม้ทบ</h4><div id="woodOptions" style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px;"></div></div></div>
+<div id="rowModal" class="modal" onclick="closeModals()"><div class="modal-content"><h4>จำนวนแถว</h4><div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;"><button class="btn-sub" onclick="applyGlobalSetting('histRows', 2)">2 แถว</button><button class="btn-sub" onclick="applyGlobalSetting('histRows', 3)">3 แถว</button></div></div></div>
+
+<script>
+    class LogicController {
+        constructor(id, label, fixedExp) {
+            this.id = id; this.label = label; this.currentExp = fixedExp;
+            this.createUI();
+            this.container = document.getElementById(id);
+            const saved = JSON.parse(localStorage.getItem('v17_reactive_' + id)) || {};
+            this.log = saved.log || [];
+            this.selectedLv = saved.selectedLv || 1;
+            this.selectedWood = saved.selectedWood || 6;
+            this.histRows = saved.histRows || 2;
+            this.currentStep = 0;
+            this.isLoss = false;
+            this.aim = "";
+            this.isFound = false;
+        }
+
+        createUI() {
+            const html = `<div id="${this.id}" class="section">
+                <div class="u-header"><span class="u-label">UNIT ${this.label}</span><span class="u-win-count winCount">0</span></div>
+                <div class="target-circle target"><span class="targetText">-</span></div>
+                <div class="dna-tag">DNA 2^${this.currentExp}</div>
+                <div class="hist-container" id="hist-${this.id}"></div>
+            </div>`;
+            document.getElementById('unitContainer').insertAdjacentHTML('beforeend', html);
+        }
+
+        save() {
+            localStorage.setItem('v17_reactive_' + this.id, JSON.stringify({
+                log: this.log, selectedLv: this.selectedLv,
+                selectedWood: this.selectedWood, histRows: this.histRows
+            }));
+        }
+
+        recalculateHistory() {
+            let virtualStep = 0;
+            let virtualIsLoss = false;
+            let virtualHistory = [];
+            let currentAim = "";
+            const cleanLog = this.log.filter(x => x !== 'T');
+            const processedLog = [];
+
+            for (let i = 0; i < cleanLog.length; i++) {
+                const actualResult = cleanLog[i];
+                if (currentAim !== "") {
+                    if (actualResult === currentAim) {
+                        virtualHistory.push('WIN');
+                        virtualStep = 0;
+                        virtualIsLoss = false;
+                        currentAim = "";
+                    } else {
+                        virtualStep++;
+                        if (virtualStep >= this.selectedWood) {
+                            virtualHistory.push('LOSS');
+                            virtualStep = 0;
+                            virtualIsLoss = true;
+                            currentAim = "";
+                        }
+                    }
+                } else {
+                    virtualIsLoss = false;
+                }
+                processedLog.push(actualResult);
+                if (currentAim === "") {
+                    currentAim = this.scanLogic(this.currentExp, processedLog) || "";
+                }
+            }
+            this.aim = currentAim;
+            this.currentStep = virtualStep;
+            this.isLoss = virtualIsLoss;
+            this.isFound = currentAim !== "";
+            return virtualHistory;
+        }
+
+        processAdd(v) { this.log.push(v); this.save(); this.render(); }
+        undo() { if (this.log.length > 0) { this.log.pop(); this.save(); this.render(); } }
+
+        render() {
+            const calculatedHistory = this.recalculateHistory();
+            const target = this.container.querySelector('.target');
+            const targetText = this.container.querySelector('.targetText');
+            target.className = "target-circle target";
+            
+            if (this.isLoss) {
+                targetText.innerText = "L"; target.classList.add('is-loss');
+            } else if (this.isFound) {
+                targetText.innerText = (this.currentStep + 1) + this.aim;
+                target.classList.add(`active-${this.aim}`);
+            } else {
+                targetText.innerText = "-";
+            }
+            this.container.querySelector('.winCount').innerText = calculatedHistory.filter(h => h === 'WIN').length;
+            this.renderHistoryUI(calculatedHistory);
+        }
+
+        renderHistoryUI(history) {
+            const histDiv = document.getElementById(`hist-${this.id}`);
+            const height = (this.histRows * 14) + ((this.histRows - 1) * 2) + 8;
+            histDiv.style.height = `${height}px`;
+            histDiv.innerHTML = history.slice(-60).map(h => {
+                const icon = h === 'WIN' ? '✅' : '❌';
+                const cls = h === 'WIN' ? 'h-win' : 'h-loss';
+                return `<div class="h-icon ${cls}">${icon}</div>`;
+            }).join('');
+            histDiv.scrollLeft = histDiv.scrollWidth;
+        }
+
+        scanLogic(exp, cleanData) {
+            if (cleanData.length < 3) return null;
+            const limit = Math.min(Math.pow(2, exp), 524288);
+            for (let d = 0; d < limit; d++) {
+                let streak = 0;
+                for (let r = 1; r < cleanData.length; r++) {
+                    let bit = (d >> (r % exp)) & 1;
+                    let predict = (bit === 0) ? cleanData[r-1] : (cleanData[r-1] === 'P' ? 'B' : 'P');
+                    if (predict !== cleanData[r]) streak++; else streak = 0;
+                }
+                if (streak - (exp - 1) >= this.selectedLv) {
+                    let nextBit = (d >> (cleanData.length % exp)) & 1;
+                    let last = cleanData[cleanData.length - 1];
+                    return (nextBit === 0) ? last : (last === 'P' ? 'B' : 'P');
+                }
+            }
+            return null;
+        }
+    }
+
+    const controllers = [];
+    // แก้ไขตรงนี้: วนลูปสร้างแค่ 10 Units
+    for(let i=1; i<=10; i++) {
+        controllers.push(new LogicController('app' + i, i, 4 + i));
+    }
+
+    function globalInput(v) { controllers.forEach(c => c.processAdd(v)); renderGlobalGrid(); }
+    function globalUndo() { controllers.forEach(c => c.undo()); renderGlobalGrid(); }
+    function renderGlobalGrid() {
+        const grid = document.getElementById('globalGrid'); grid.innerHTML = "";
+        const mainLog = controllers[0].log;
+        mainLog.slice(-72).forEach(v => { 
+            let d = document.createElement('div'); d.className = 'dot ' + v; d.innerText = v; grid.appendChild(d); 
+        });
+        for(let i=mainLog.length; i<72; i++) grid.appendChild(document.createElement('div')).className='dot';
+    }
+
+    function openGlobalSetting() {
+        document.getElementById('curWood').innerText = controllers[0].selectedWood;
+        document.getElementById('curLv').innerText = controllers[0].selectedLv;
+        document.getElementById('curRows').innerText = controllers[0].histRows;
+        document.getElementById('mainSettingModal').style.display = 'flex';
+    }
+    function applyGlobalSetting(key, val) {
+        controllers.forEach(c => { c[key] = val; c.save(); c.render(); });
+        openGlobalSetting(); closeModals();
+    }
+    function globalReset() { if(confirm("ล้างข้อมูลทั้งหมด?")) { localStorage.clear(); location.reload(); } }
+    function closeModals() { document.querySelectorAll('.modal').forEach(m => m.style.display = 'none'); }
+    function openSubModal(id) { closeModals(); document.getElementById(id).style.display = 'flex'; }
+    
+    function initModals() {
+        [1,2,3,4,5,6].forEach(v => {
+            let b = document.createElement('button'); b.className='btn-sub'; b.innerText=v;
+            b.onclick=()=> applyGlobalSetting('selectedLv', v);
+            document.getElementById('lvOptions').appendChild(b);
+        });
+        [1,2,3,4,5,6,7,8,9,10,12].forEach(v => {
+            let b = document.createElement('button'); b.className='btn-sub'; b.innerText=v;
+            b.onclick=()=> applyGlobalSetting('selectedWood', v);
+            document.getElementById('woodOptions').appendChild(b);
+        });
+    }
+    window.onload = () => { initModals(); controllers.forEach(c => c.render()); renderGlobalGrid(); };
+</script>
+</body>
+</html>
