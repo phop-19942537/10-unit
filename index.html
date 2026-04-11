@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Logic Master - 10 Units</title>
+    <title>Logic Master - 10 Units Glow</title>
     <style>
         :root {
             --bg: #0b0e14; --text: #ffffff; --box: #1a1f26; --border: #2d343f;
@@ -13,7 +13,14 @@
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; font-family: 'Inter', sans-serif; }
         body { background: var(--bg); color: var(--text); margin: 0; padding: 0; overflow-x: hidden; }
         
-        /* Header */
+        /* Animation สำหรับไฟกระพริบเมื่อแพ้ */
+        @keyframes glow-pulse {
+            0% { box-shadow: 0 0 5px var(--loss); border-color: var(--border); }
+            50% { box-shadow: 0 0 20px var(--loss); border-color: var(--loss); }
+            100% { box-shadow: 0 0 5px var(--loss); border-color: var(--border); }
+        }
+        .is-loss-glow { animation: glow-pulse 1.5s infinite; border: 2px solid var(--loss) !important; }
+
         .global-header {
             position: sticky; top: 0; z-index: 100;
             background: rgba(11, 14, 20, 0.95); backdrop-filter: blur(15px);
@@ -35,9 +42,8 @@
         .util-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; width: 100%; max-width: 420px; }
         .btn-sub { padding: 8px 0; border: 1px solid var(--border); border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; background: var(--box); color: var(--text); }
 
-        /* Unit Layout */
         .app-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; padding: 10px; }
-        .section { background: var(--box); border: 1px solid var(--border); border-radius: 12px; padding: 8px 5px; display: flex; flex-direction: column; align-items: center; }
+        .section { background: var(--box); border: 1px solid var(--border); border-radius: 12px; padding: 8px 5px; display: flex; flex-direction: column; align-items: center; transition: 0.3s; }
         
         .u-header { width: 100%; display: flex; justify-content: space-between; padding: 0 5px; margin-bottom: 5px; }
         .u-label { font-size: 10px; font-weight: 900; color: #555; }
@@ -55,14 +61,12 @@
             padding: 4px; overflow-x: auto; display: flex; flex-direction: column; flex-wrap: wrap; 
             align-content: flex-start; gap: 2px; scrollbar-width: none;
         }
-        .hist-container::-webkit-scrollbar { display: none; }
         .h-icon { width: 14px; height: 14px; font-size: 9px; display: flex; align-items: center; justify-content: center; border-radius: 2px; }
         .h-win { color: var(--win); background: rgba(0,255,136,0.1); }
         .h-loss { color: var(--loss); background: rgba(255,77,77,0.1); }
 
         .active-P { border-color: var(--p-color) !important; color: var(--p-color) !important; }
         .active-B { border-color: var(--b-color) !important; color: var(--b-color) !important; }
-        .is-loss { border-color: var(--loss) !important; color: var(--loss) !important; }
 
         .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: none; justify-content: center; align-items: center; z-index: 1000; }
         .modal-content { background: var(--box); width: 90%; max-width: 320px; border-radius: 15px; padding: 20px; border: 1px solid var(--border); text-align: center; }
@@ -88,7 +92,7 @@
 
 <div id="mainSettingModal" class="modal" onclick="closeModals()">
     <div class="modal-content" onclick="event.stopPropagation()">
-        <h3 style="margin:0 0 15px 0; color:var(--accent);">AUTO-RECALC SETTING</h3>
+        <h3 style="margin:0 0 15px 0; color:var(--accent);">SETTINGS</h3>
         <div style="display:grid; gap:10px;">
             <button class="btn-sub" onclick="openSubModal('woodModal')">ไม้ทบ: <span id="curWood">6</span></button>
             <button class="btn-sub" onclick="openSubModal('lvModal')">ความแม่นยำ: LV <span id="curLv">1</span></button>
@@ -114,7 +118,7 @@
             this.selectedWood = saved.selectedWood || 6;
             this.histRows = saved.histRows || 2;
             this.currentStep = 0;
-            this.isLoss = false;
+            this.isLossState = false; // สำหรับบอกว่าเพิ่งแพ้มา
             this.aim = "";
             this.isFound = false;
         }
@@ -138,40 +142,42 @@
 
         recalculateHistory() {
             let virtualStep = 0;
-            let virtualIsLoss = false;
             let virtualHistory = [];
             let currentAim = "";
+            let lastEventWasLoss = false; // เช็คตาปัจจุบันว่าหลุดไม้ทบหรือไม่
+            
             const cleanLog = this.log.filter(x => x !== 'T');
             const processedLog = [];
 
             for (let i = 0; i < cleanLog.length; i++) {
                 const actualResult = cleanLog[i];
+                lastEventWasLoss = false; 
+
                 if (currentAim !== "") {
                     if (actualResult === currentAim) {
                         virtualHistory.push('WIN');
                         virtualStep = 0;
-                        virtualIsLoss = false;
                         currentAim = "";
                     } else {
                         virtualStep++;
                         if (virtualStep >= this.selectedWood) {
                             virtualHistory.push('LOSS');
                             virtualStep = 0;
-                            virtualIsLoss = true;
                             currentAim = "";
+                            lastEventWasLoss = true; // บันทึกว่าเพิ่งแพ้
                         }
                     }
-                } else {
-                    virtualIsLoss = false;
                 }
+                
                 processedLog.push(actualResult);
                 if (currentAim === "") {
                     currentAim = this.scanLogic(this.currentExp, processedLog) || "";
                 }
             }
+            
             this.aim = currentAim;
             this.currentStep = virtualStep;
-            this.isLoss = virtualIsLoss;
+            this.isLossState = lastEventWasLoss; // ส่งสถานะไปแสดงไฟกระพริบ
             this.isFound = currentAim !== "";
             return virtualHistory;
         }
@@ -183,16 +189,24 @@
             const calculatedHistory = this.recalculateHistory();
             const target = this.container.querySelector('.target');
             const targetText = this.container.querySelector('.targetText');
-            target.className = "target-circle target";
             
-            if (this.isLoss) {
-                targetText.innerText = "L"; target.classList.add('is-loss');
-            } else if (this.isFound) {
+            // รีเซ็ต Class
+            target.className = "target-circle target";
+            this.container.classList.remove('is-loss-glow');
+
+            // แสดงไฟกระพริบที่ Unit ถ้าเพิ่งแพ้
+            if (this.isLossState) {
+                this.container.classList.add('is-loss-glow');
+            }
+
+            // แสดงพยากรณ์เสมอ (แม้จะเพิ่งแพ้มา ก็จะคำนวณตาต่อไปทันที)
+            if (this.isFound) {
                 targetText.innerText = (this.currentStep + 1) + this.aim;
                 target.classList.add(`active-${this.aim}`);
             } else {
                 targetText.innerText = "-";
             }
+
             this.container.querySelector('.winCount').innerText = calculatedHistory.filter(h => h === 'WIN').length;
             this.renderHistoryUI(calculatedHistory);
         }
@@ -230,10 +244,7 @@
     }
 
     const controllers = [];
-    // แก้ไขตรงนี้: วนลูปสร้างแค่ 10 Units
-    for(let i=1; i<=10; i++) {
-        controllers.push(new LogicController('app' + i, i, 4 + i));
-    }
+    for(let i=1; i<=10; i++) controllers.push(new LogicController('app' + i, i, 4 + i));
 
     function globalInput(v) { controllers.forEach(c => c.processAdd(v)); renderGlobalGrid(); }
     function globalUndo() { controllers.forEach(c => c.undo()); renderGlobalGrid(); }
