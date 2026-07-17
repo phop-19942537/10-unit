@@ -60,6 +60,7 @@
             width: 95%; background: rgba(0,0,0,0.4); border-radius: 6px; 
             padding: 4px; overflow-x: auto; display: flex; flex-direction: column; flex-wrap: wrap; 
             align-content: flex-start; gap: 2px; scrollbar-width: none;
+            align-items: flex-start;
         }
         .h-icon { width: 14px; height: 14px; font-size: 9px; display: flex; align-items: center; justify-content: center; border-radius: 2px; }
         .h-win { color: var(--win); background: rgba(0,255,136,0.1); }
@@ -104,7 +105,20 @@
 
 <div id="lvModal" class="modal" onclick="closeModals()"><div class="modal-content"><h4>แม่นยำ</h4><div id="lvOptions" style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px;"></div></div></div>
 <div id="woodModal" class="modal" onclick="closeModals()"><div class="modal-content"><h4>ไม้ทบ</h4><div id="woodOptions" style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px;"></div></div></div>
-<div id="rowModal" class="modal" onclick="closeModals()"><div class="modal-content"><h4>จำนวนแถว</h4><div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;"><button class="btn-sub" onclick="applyGlobalSetting('histRows', 2)">2 แถว</button><button class="btn-sub" onclick="applyGlobalSetting('histRows', 3)">3 แถว</button></div></div></div>
+
+<!-- ปรับแต่ง UI เลือกจำนวนแถวให้รองรับปุ่ม 2-6 แถว (ใช้แบบ 3 คอลัมน์) -->
+<div id="rowModal" class="modal" onclick="closeModals()">
+    <div class="modal-content">
+        <h4>จำนวนแถว</h4>
+        <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:10px;">
+            <button class="btn-sub" onclick="applyGlobalSetting('histRows', 2)">2 แถว</button>
+            <button class="btn-sub" onclick="applyGlobalSetting('histRows', 3)">3 แถว</button>
+            <button class="btn-sub" onclick="applyGlobalSetting('histRows', 4)">4 แถว</button>
+            <button class="btn-sub" onclick="applyGlobalSetting('histRows', 5)">5 แถว</button>
+            <button class="btn-sub" onclick="applyGlobalSetting('histRows', 6)">6 แถว</button>
+        </div>
+    </div>
+</div>
 
 <script>
     class LogicController {
@@ -118,7 +132,7 @@
             this.selectedWood = saved.selectedWood || 6;
             this.histRows = saved.histRows || 2;
             this.currentStep = 0;
-            this.isLossState = false; // สำหรับบอกว่าเพิ่งแพ้มา
+            this.isLossState = false; 
             this.aim = "";
             this.isFound = false;
         }
@@ -144,7 +158,7 @@
             let virtualStep = 0;
             let virtualHistory = [];
             let currentAim = "";
-            let lastEventWasLoss = false; // เช็คตาปัจจุบันว่าหลุดไม้ทบหรือไม่
+            let lastEventWasLoss = false; 
             
             const cleanLog = this.log.filter(x => x !== 'T');
             const processedLog = [];
@@ -164,7 +178,7 @@
                             virtualHistory.push('LOSS');
                             virtualStep = 0;
                             currentAim = "";
-                            lastEventWasLoss = true; // บันทึกว่าเพิ่งแพ้
+                            lastEventWasLoss = true; 
                         }
                     }
                 }
@@ -177,7 +191,7 @@
             
             this.aim = currentAim;
             this.currentStep = virtualStep;
-            this.isLossState = lastEventWasLoss; // ส่งสถานะไปแสดงไฟกระพริบ
+            this.isLossState = lastEventWasLoss; 
             this.isFound = currentAim !== "";
             return virtualHistory;
         }
@@ -190,16 +204,13 @@
             const target = this.container.querySelector('.target');
             const targetText = this.container.querySelector('.targetText');
             
-            // รีเซ็ต Class
             target.className = "target-circle target";
             this.container.classList.remove('is-loss-glow');
 
-            // แสดงไฟกระพริบที่ Unit ถ้าเพิ่งแพ้
             if (this.isLossState) {
                 this.container.classList.add('is-loss-glow');
             }
 
-            // แสดงพยากรณ์เสมอ (แม้จะเพิ่งแพ้มา ก็จะคำนวณตาต่อไปทันที)
             if (this.isFound) {
                 targetText.innerText = (this.currentStep + 1) + this.aim;
                 target.classList.add(`active-${this.aim}`);
